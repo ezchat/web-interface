@@ -11,7 +11,7 @@ class MyDocument extends Document {
     return (
       <html lang='en' dir='ltr'>
         <Head>
-          <link rel='icon' href={'/static/widgets.png'} />
+          <link rel='icon' href={'https://avatars0.githubusercontent.com/u/48025901?s=200&v=4'} />
           <meta charSet='utf-8' />
           {/* Use minimum-scale=1 to enable GPU rasterization */}
           <meta
@@ -24,7 +24,7 @@ class MyDocument extends Document {
           {/* PWA primary color */}
           <meta name='theme-color' content={pageContext.theme.palette.primary.main} />
           {/* Open Graph Protocol support. */}
-          <meta property='og:title' content='ReConsole' />
+          <meta property='og:title' content='ez.chat' />
           <meta property='og:type' content='website' />
           {/* <meta property='og:image' content={ico} /> */}
           <link

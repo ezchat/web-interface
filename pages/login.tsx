@@ -9,68 +9,28 @@ import withRoot from '../components/imports/withRoot'
 import { ip } from '../config.json'
 import * as fetch from 'isomorphic-unfetch'
 
-interface Status {
-  code: number, online: boolean, maxPlayers: number, playersOnline: number, versionName: string
-}
 interface S {
-  listening: boolean, status?: Status, username: string, password: string, failedAuth: boolean,
-  // eslint-disable-next-line no-undef
-  interval?: NodeJS.Timeout
+  username: string, password: string, failedAuth: boolean, requestFail: boolean
 }
 
-// TODO:
-/*
-- Support toggling background gradient.
-- Support customizable titles for servers.
-- Have a rootURL environment variable.
-*/
+const description = `ez.chat is a versatile, functional and elegant chat app that's \
+easy to use.`
 
-const description = `Login page for the Minecraft server.\nReConsole is a \
-Minecraft server control dashboard which allows efficient and \
-easy to set up server administration.`
-
-class Index extends React.Component<{ width: 'xs'|'sm'|'md'|'lg'|'xl' }, S> {
+class Login extends React.Component<{ width: 'xs'|'sm'|'md'|'lg'|'xl' }, S> {
   constructor (props: { width: 'xs' | 'sm' | 'md' | 'lg' | 'xl' }) {
     super(props)
-    this.state = { listening: false, username: '', password: '', failedAuth: false }
+    this.state = { username: '', password: '', failedAuth: false, requestFail: false }
     this.login = this.login.bind(this)
   }
 
   async componentDidMount () {
-    try {
-      // Automatically forward to dashboard if logged in.
-      try { if (localStorage.getItem('accessToken')) Router.push('/dashboard') } catch (e) {}
-      // Check if the server is online.
-      this.setState({ status: await (await fetch(ip + ':4200/')).json(), listening: true })
-    } catch (e) {
-      console.warn('Cannot connect to remote Minecraft server with ReConsole!\n' + e)
-    }
-    // Set an interval of 10 seconds to repeatedly check if the server listens.
-    // TODO: Test behaviour.
-    const interval = setInterval(async () => {
-      // Try to access the server.
-      try {
-        // Update the status.
-        this.setState({ status: await (await fetch(ip + ':4200/')).json(), listening: true })
-      } catch (e) {
-        if (this.state.listening) { // If it was listening before, we warn that it's not anymore.
-          console.warn('Cannot connect to remote Minecraft server with ReConsole!\n' + e)
-        } // Then we set listening to false.
-        this.setState({ listening: false })
-      }
-      // Should happen every 10 seconds.
-    }, 10000)
-    // We set the interval in state to unregister it later..
-    this.setState({ interval })
+    // Automatically forward to chat if logged in.
+    try { if (localStorage.getItem('token')) Router.push('/chat') } catch (e) {}
   }
 
-  // Clear interval on timeout.
-  componentWillUnmount () { clearInterval(this.state.interval) }
-
   async login () {
-    if (!this.state.listening) return // Don't proceed if we're not listening.
     try {
-      const request = await fetch(ip + ':4200/login', {
+      const request = await fetch(ip + '/api/users/auth', {
         method: 'POST', headers: { Username: this.state.username, Password: this.state.password }
       })
       const response = await request.json()
@@ -78,18 +38,18 @@ class Index extends React.Component<{ width: 'xs'|'sm'|'md'|'lg'|'xl' }, S> {
       if (!response.success) {
         // If it was an authentication error, we handle it by setting failedAuth to true.
         if (response.code === 401) this.setState({ failedAuth: true })
-        // TODO: We'll have another handle here for other errors.
-        return
+        // If the request failed, we set that as state.
+        else this.setState({ requestFail: true })
       }
-      // Save the access token in localStorage if we are on the client.
+      // Save the token in localStorage if we are on the client.
       // We'll add sessionStorage support later for Remember Me stuff.
       try {
-        if (localStorage && response.access_token) {
-          localStorage.setItem('accessToken', response.access_token)
+        if (localStorage && response.token) {
+          localStorage.setItem('token', response.token)
           // Also, if authentication previously failed, let's just say it succeeded.
-          this.setState({ failedAuth: false })
+          this.setState({ failedAuth: false, requestFail: false })
           // Then we redirect to the new page.
-          Router.push('/dashboard')
+          Router.push('/chat')
         }
       } catch (e) {}
       // Log any errors if this fails (needs to change, TODO)
@@ -97,51 +57,31 @@ class Index extends React.Component<{ width: 'xs'|'sm'|'md'|'lg'|'xl' }, S> {
   }
 
   render () {
-    // Smaller status.
-    const status = this.state.status
-    const versionName = status ? status.versionName : undefined
     // Responsive styling.
     const paperStyle = ['xs', 'sm'].includes(this.props.width) ? { flex: 1 } : { width: '33vw' }
-    const allowLogin = !this.state.username || !this.state.password || !this.state.listening
-    const ResponsiveButton = ['xs', 'sm'].includes(this.props.width) ? (
-      <Button variant='contained' color='secondary' onClick={this.login} fullWidth
-        disabled={allowLogin}>Log In</Button>
-    ) : (
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-        <Button variant='contained' color='secondary' onClick={this.login} disabled={allowLogin}>
-          Log In
-        </Button>
-      </div>
-    )
+    const allowLogin = !this.state.username || !this.state.password
     // Return the code.
     return (
-      <div style={{ background: 'linear-gradient(to top, #fc00ff, #00dbde)' }}>
+      <>
         <div style={{ marginRight: 16, marginLeft: 16 }}>
           <>
-            <title>ReConsole</title>
+            <title>Login - ez.chat</title>
             {/* <meta property='og:url' content={`${rootURL}/`} /> */}
             <meta property='og:description' content={description} />
             <meta name='Description' content={description} />
           </>
           <AppBar>
             <Toolbar>
-              <Typography variant='h6' color='inherit' style={{ flex: 1 }}>ReConsole</Typography>
-              <Link href='/about'><Button color='inherit'>About</Button></Link>
+              <Typography variant='h6' color='inherit' style={{ flex: 1 }}>ez.chat</Typography>
             </Toolbar>
           </AppBar>
           <div style={{
             display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh'
           }}>
             <Paper elevation={24} style={{ padding: 15, ...paperStyle }}>
-              <Typography variant='h5'>Status</Typography><br />
-              <Typography>
-                {this.state.listening && status && status.online
-                  ? `Online | ${versionName} | ${status.playersOnline}/${status.maxPlayers} online`
-                  : 'Cannot connect to server via ReConsole.'}
-              </Typography>
-              <hr /><Typography variant='h5'>Log In</Typography><br />
+              <Typography variant='h5'>Log In</Typography><br />
               <Typography gutterBottom>
-                Welcome to ReConsole! Enter your designated username and password to access console.
+                Welcome to ez.chat!
               </Typography>
               <TextField required label='Username' fullWidth value={this.state.username}
                 onChange={e => this.setState({ username: e.target.value })} autoFocus
@@ -154,13 +94,14 @@ class Index extends React.Component<{ width: 'xs'|'sm'|'md'|'lg'|'xl' }, S> {
               <br />{this.state.failedAuth ? (<><br />
                 <Typography color='error'>Your username or password is incorrect.</Typography>
               </>) : ''}<br />
-              {ResponsiveButton}
+              <Button variant='contained' color='secondary' onClick={this.login} fullWidth
+                disabled={allowLogin}>Log In</Button>
             </Paper>
           </div>
         </div>
-      </div>
+      </>
     )
   }
 }
 
-export default withRoot(withWidth()(Index))
+export default withRoot(withWidth()(Login))
