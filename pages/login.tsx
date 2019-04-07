@@ -85,15 +85,20 @@ class Login extends React.Component<{ width: 'xs'|'sm'|'md'|'lg'|'xl' }, S> {
               </Typography>
               <TextField required label='Username' fullWidth value={this.state.username}
                 onChange={e => this.setState({ username: e.target.value })} autoFocus
-                error={this.state.failedAuth} />
+                error={this.state.failedAuth || this.state.requestFail} />
               <br /><br />
               <TextField required label='Password' fullWidth value={this.state.password}
                 onChange={e => this.setState({ password: e.target.value })} type='password'
                 onSubmit={this.login} onKeyPress={e => e.key === 'Enter' && this.login()}
-                error={this.state.failedAuth} />
+                error={this.state.failedAuth || this.state.requestFail} />
               <br />{this.state.failedAuth ? (<><br />
                 <Typography color='error'>Your username or password is incorrect.</Typography>
-              </>) : ''}<br />
+              </>) : (this.state.requestFail ? (<>
+                <br />
+                <Typography color='error'>
+                  There was an unknown error processing your request.
+                </Typography>
+              </>) : '')}<br />
               <Button variant='contained' color='secondary' onClick={this.login} fullWidth
                 disabled={allowLogin}>Log In</Button>
             </Paper>
