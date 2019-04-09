@@ -1,8 +1,7 @@
 import * as React from 'react'
 import {
-  AppBar, Toolbar, Button, Typography, Paper, TextField, withWidth
+  AppBar, Toolbar, Button, Typography, Paper, TextField, withWidth, Divider
 } from '@material-ui/core'
-import Link from 'next/link'
 import Router from 'next/router'
 import withRoot from '../components/imports/withRoot'
 
@@ -33,14 +32,16 @@ class Login extends React.Component<{ width: 'xs'|'sm'|'md'|'lg'|'xl' }, S> {
       const request = await fetch(ip + '/api/users/auth', {
         method: 'POST', headers: { Username: this.state.username, Password: this.state.password }
       })
-      const response = await request.json()
       // If request failed..
-      if (!response.success) {
+      if (!request.ok) {
         // If it was an authentication error, we handle it by setting failedAuth to true.
-        if (response.code === 401) this.setState({ failedAuth: true })
+        if (request.status === 401) this.setState({ failedAuth: true })
         // If the request failed, we set that as state.
         else this.setState({ requestFail: true })
+        return
       }
+      // Parse response.
+      const response = await request.json()
       // Save the token in localStorage if we are on the client.
       // We'll add sessionStorage support later for Remember Me stuff.
       try {
@@ -52,13 +53,15 @@ class Login extends React.Component<{ width: 'xs'|'sm'|'md'|'lg'|'xl' }, S> {
           Router.push('/chat')
         }
       } catch (e) {}
-      // Log any errors if this fails (needs to change, TODO)
-    } catch (e) { console.error(e) }
+    } catch (e) {
+      this.setState({ requestFail: true })
+      console.error(e)
+    }
   }
 
   render () {
     // Responsive styling.
-    const paperStyle = ['xs', 'sm'].includes(this.props.width) ? { flex: 1 } : { width: '33vw' }
+    const paperStyle = ['xs', 'sm'].includes(this.props.width) ? { flex: 1 } : { width: '25vw' }
     const allowLogin = !this.state.username || !this.state.password
     // Return the code.
     return (
@@ -79,18 +82,20 @@ class Login extends React.Component<{ width: 'xs'|'sm'|'md'|'lg'|'xl' }, S> {
             display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh'
           }}>
             <Paper elevation={24} style={{ padding: 15, ...paperStyle }}>
-              <Typography variant='h5'>Log In</Typography><br />
-              <Typography gutterBottom>
-                Welcome to ez.chat!
+              <Typography variant='h5' style={{ textAlign: 'center' }} gutterBottom>
+                Log In
+              </Typography><Divider /><br />
+              <Typography variant='body1' style={{ textAlign: 'center' }} gutterBottom>
+                Welcome back!
               </Typography>
               <TextField required label='Username' fullWidth value={this.state.username}
                 onChange={e => this.setState({ username: e.target.value })} autoFocus
-                error={this.state.failedAuth || this.state.requestFail} />
+                error={this.state.failedAuth} />
               <br /><br />
               <TextField required label='Password' fullWidth value={this.state.password}
                 onChange={e => this.setState({ password: e.target.value })} type='password'
                 onSubmit={this.login} onKeyPress={e => e.key === 'Enter' && this.login()}
-                error={this.state.failedAuth || this.state.requestFail} />
+                error={this.state.failedAuth} />
               <br />{this.state.failedAuth ? (<><br />
                 <Typography color='error'>Your username or password is incorrect.</Typography>
               </>) : (this.state.requestFail ? (<>
